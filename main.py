@@ -248,8 +248,8 @@ class journal:
             self.textEntry.tag_add('underline', 'sel.first', 'sel.last')
 
     """ TODO -- Align Text Sections need to be updated so that when one is toggled 
-                on and another gets clicked, that it just changes to that one instead. As 
-                it currently just stops working and makes buttons do incorrect things. 
+                on and another option gets clicked, that it just changes to that one instead. As 
+                it currently just stops working and makes the buttons function incorrectly. 
                 Perhaps we need to learn more about Tags."""
 
     def alignTextLeft(self):        # Aligns text to the left
