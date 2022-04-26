@@ -8,10 +8,11 @@ from sys import exit
 from tkinter import font
 
 
-import pyperclip, os
+import pyperclip
 import logging
 import datetime
 
+# Make it work properly, then make it look pretty...
 
 class journal:
     def __init__(self):     # initiates the app and sets up Tk object
@@ -22,6 +23,10 @@ class journal:
 
         # Basic tkinter setup
 
+        self.boldFont = 'normal'
+        self.italicFont = 'roman'
+        self.underlineFont = False
+
         self.root = Tk()
         self.fileName = 'untitled.txt'
         self.root.title(f'Journal-{self.fileName}')
@@ -29,6 +34,8 @@ class journal:
         self.root.config(menu=self.mainMenu)
         self.mainframe = ttk.Frame(self.root)
         self.mainframe.grid(column=0, row=1)
+        self.mainframe.rowconfigure(1, weight=1)
+        self.mainframe.columnconfigure(0, weight=1)
         self.toolbarFrame = ttk.Frame(self.root, relief=SUNKEN)
         self.toolbarFrame.grid(column=0, row=0)
 
@@ -90,8 +97,7 @@ class journal:
         # Text Entry Window
 
         self.textEntry = Text(self.mainframe, undo=True)
-    
-        self.textEntry.grid(column=0, row=1, columnspan=3)
+        self.textEntry.grid(column=0, row=1, columnspan=3, sticky='NSEW')
         self.textEntry.focus()
 
         # Scrollbar 
@@ -107,9 +113,9 @@ class journal:
 
         # Buttons
 
-        self.italicsBtn = ttk.Button(self.toolbarFrame, text='I', command=self.italicText)
-        self.boldBtn = ttk.Button(self.toolbarFrame, text='B', command=self.boldText)
-        self.underlineBtn = ttk.Button(self.toolbarFrame, text='U', command=self.underlineText)
+        self.italicsBtn = ttk.Button(self.toolbarFrame, text='I', command=lambda: self.underlineBoldItalic('italic'))
+        self.boldBtn = ttk.Button(self.toolbarFrame, text='B', command=lambda: self.underlineBoldItalic('bold'))
+        self.underlineBtn = ttk.Button(self.toolbarFrame, text='U', command=lambda: self.underlineBoldItalic('underline'))
 
         self.alignLeftBtn = ttk.Button(self.toolbarFrame, text='AL', command=self.alignTextLeft)
         self.alignRightBtn = ttk.Button(self.toolbarFrame, text='AR', command=self.alignTextRight)
@@ -152,7 +158,7 @@ class journal:
             ''')
 
     def cutText(self):      # Cut -- Cuts Selected text to clipboard
-        if self.textEntry.selection_get():
+        if self.textEntry.selection_get:
             pyperclip.copy(self.textEntry.selection_get())
             self.textEntry.delete('sel.first', 'sel.last')
 
@@ -211,46 +217,40 @@ class journal:
 
     # Toolbar Functions
 
-    def italicText(self): # Makes text Italic
-        italicFont = font.Font(self.textEntry, self.textEntry.cget('font'))
-        italicFont.configure(slant='italic')
+    def underlineBoldItalic(self, option):      # Handles italics, bold, and underline options
 
-        self.textEntry.tag_configure('italic', font=italicFont)
-        currentTags = self.textEntry.tag_names('sel.first')
+        # need to make it turn on and off for ongoing text
+        # need to make it recognize what secitons should be unchecked for bold. 
+        fontToEdit = font.Font(self.textEntry, self.textEntry.cget('font'))
+        fontToEdit.configure(underline=self.underlineFont, weight=self.boldFont, slant=self.italicFont)
+        
+        if option == 'bold':
+            if self.boldFont == 'bold':
+                self.boldFont = 'normal'
+            else:
+                self.boldFont = 'bold'
+        elif option == 'italic':
+            if self.italicFont == 'italic':
+                self.italicFont = 'roman'
+            else:
+                self.italicFont = 'italic'
+        elif option == 'underline':
+            if self.underlineFont == 'underline':
+                self.underlineFont = False
+            else:
+                self.underlineFont = True
 
-        if 'italic' in currentTags:
-            self.textEntry.tag_remove('italic', 'sel.first', 'sel.last')
-        else:
-            self.textEntry.tag_add('italic', 'sel.first', 'sel.last')
+        fontToEdit = font.Font(self.textEntry, self.textEntry.cget('font'))
+        fontToEdit.configure(underline=self.underlineFont, weight=self.boldFont, slant=self.italicFont)
 
-    def boldText(self): # Makes text Bold
-        boldFont = font.Font(self.textEntry, self.textEntry.cget('font'))
-        boldFont.configure(weight='bold')
+        self.textEntry.tag_configure('fontStyle', font=fontToEdit)
+        self.textEntry.tag_add('fontStyle', 'sel.first', 'sel.last')
+        self.textEntry.selection_clear()
+        self.boldFont = 'normal'
+        self.italicFont = 'roman'
+        self.underlineFont = False
 
-        self.textEntry.tag_configure('bold', font=boldFont)
-        currentTags = self.textEntry.tag_names('sel.first')
-
-        if 'bold' in currentTags:
-            self.textEntry.tag_remove('bold', 'sel.first', 'sel.last')
-        else:
-            self.textEntry.tag_add('bold', 'sel.first', 'sel.last')
-
-    def underlineText(self): # Makes text Underlined
-        underlineFont = font.Font(self.textEntry, self.textEntry.cget('font'))
-        underlineFont.configure(underline=True)
-
-        self.textEntry.tag_configure('underline', font=underlineFont)
-        currentTags = self.textEntry.tag_names('sel.first')
-
-        if 'underline' in currentTags:
-            self.textEntry.tag_remove('underline', 'sel.first', 'sel.last')
-        else:
-            self.textEntry.tag_add('underline', 'sel.first', 'sel.last')
-
-    """ TODO -- Align Text Sections need to be updated so that when one is toggled 
-                on and another option gets clicked, that it just changes to that one instead. As 
-                it currently just stops working and makes the buttons function incorrectly. 
-                Perhaps we need to learn more about Tags."""
+        
 
     def alignTextLeft(self):        # Aligns text to the left
         self.textEntry.tag_configure('left', justify='left')
@@ -260,6 +260,12 @@ class journal:
             self.textEntry.tag_remove('left', 1.0, 'end')
             self.textEntry.focus()
         else:
+            try:
+                self.textEntry.tag_remove('right', 1.0, 'end')
+                self.textEntry.tag_remove('center', 1.0, 'end')
+            except Exception as e:
+                print(self.textEntry.tag_names())
+
             self.textEntry.tag_add('left', 1.0, 'end')
             self.textEntry.focus()
 
@@ -271,6 +277,12 @@ class journal:
             self.textEntry.tag_remove('right', 1.0, 'end')
             self.textEntry.focus()
         else:
+            try:
+                self.textEntry.tag_remove('left', 1.0, 'end')
+                self.textEntry.tag_remove('center', 1.0, 'end')
+            except Exception as e:
+                print(self.textEntry.tag_names())
+
             self.textEntry.tag_add('right', 1.0, 'end')
             self.textEntry.focus()
 
@@ -282,10 +294,18 @@ class journal:
             self.textEntry.tag_remove('center', 1.0, 'end')
             self.textEntry.focus()
         else:
+            try:
+                self.textEntry.tag_remove('right', 1.0, 'end')
+                self.textEntry.tag_remove('left', 1.0, 'end')
+            except Exception as e:
+                print(self.textEntry.tag_names())
+
             self.textEntry.tag_add('center', 1.0, 'end')
             self.textEntry.focus()
 
 
 if __name__ == '__main__':
     journal()
+    
+
     
