@@ -4,13 +4,15 @@
 from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog
-from sys import exit
 from tkinter import font
+from sys import exit
 
 
 import pyperclip
 import logging
 import datetime
+
+from sqlalchemy import true
 
 # Make it work properly, then make it look pretty...
 
@@ -23,20 +25,28 @@ class journal:
 
         # Basic tkinter setup
 
-        self.boldFont = 'normal'
-        self.italicFont = 'roman'
-        self.underlineFont = False
-
         self.root = Tk()
+
+        self.boldFont = StringVar()
+        self.boldFont.set('normal')
+        self.italicFont = StringVar()
+        self.italicFont.set('roman')
+        self.underlineFont = BooleanVar()
+        self.underlineFont.set(False)
+        self.previousText = StringVar()
+        self.previousText.set('')
         self.fileName = 'untitled.txt'
         self.root.title(f'Journal-{self.fileName}')
+        self.root.resizable(True, True)
+
         self.mainMenu = Menu()
         self.root.config(menu=self.mainMenu)
+
         self.toolbarFrame = ttk.Frame(self.root, relief=SUNKEN)
         self.toolbarFrame.grid(column=0, row=0)
         self.mainframe = ttk.Frame(self.root)
         self.mainframe.grid(column=0, row=1)
-
+        
         # Main loop informaiton
 
         self.display()
@@ -95,7 +105,7 @@ class journal:
         # Text Entry Window
 
         self.textEntry = Text(self.mainframe, undo=True)
-        self.textEntry.grid(column=0, row=1, columnspan=3, sticky='NSEW')
+        self.textEntry.grid(column=0, row=1, columnspan=3)
         self.textEntry.focus()
 
         # Scrollbar 
@@ -111,9 +121,9 @@ class journal:
 
         # Buttons
 
-        self.italicsBtn = ttk.Button(self.toolbarFrame, text='I', command=lambda: self.underlineBoldItalic('italic'))
-        self.boldBtn = ttk.Button(self.toolbarFrame, text='B', command=lambda: self.underlineBoldItalic('bold'))
-        self.underlineBtn = ttk.Button(self.toolbarFrame, text='U', command=lambda: self.underlineBoldItalic('underline'))
+        self.italicsBtn = ttk.Button(self.toolbarFrame, text='I', command=self.italicText)
+        self.boldBtn = ttk.Button(self.toolbarFrame, text='B', command=self.boldText)
+        self.underlineBtn = ttk.Button(self.toolbarFrame, text='U', command=self.underlineText)
 
         self.alignLeftBtn = ttk.Button(self.toolbarFrame, text='AL', command=self.alignTextLeft)
         self.alignRightBtn = ttk.Button(self.toolbarFrame, text='AR', command=self.alignTextRight)
@@ -217,55 +227,41 @@ class journal:
 
     # Toolbar Functions
 
-    def underlineBoldItalic(self, option):      # Handles italics, bold, and underline options
+    def italicText(self): # Makes text Italic
+        italicFont = font.Font(self.textEntry, self.textEntry.cget('font'))
+        italicFont.configure(slant='italic')
 
-        # need to make it turn on and off for ongoing text
-        # need to make it recognize what secitons should be unchecked for bold. 
-        # may have to make a font for each potential option. 
-        
-        fontToEdit = font.Font(self.textEntry, self.textEntry.cget('font'))
-        fontToEdit.configure(underline=self.underlineFont, weight=self.boldFont, slant=self.italicFont)
+        self.textEntry.tag_configure('italic', font=italicFont)
         currentTags = self.textEntry.tag_names('sel.first')
 
-        if option == 'bold':
-            if 'bold' in currentTags:
-                self.boldFont = 'normal'
-                self.textEntry.tag_remove(f'bold', 'sel.first', 'sel.last') 
-            else:
-                self.boldFont = 'bold'
-                fontToEdit = font.Font(self.textEntry, self.textEntry.cget('font'))
-                fontToEdit.configure(underline=self.underlineFont, weight=self.boldFont, slant=self.italicFont)
-                self.textEntry.tag_configure(f'bold', font=fontToEdit)
-                self.textEntry.tag_add(f'bold', 'sel.first', 'sel.last')
-                self.textEntry.selection_clear()
+        if 'italic' in currentTags:
+            self.textEntry.tag_remove('italic', 'sel.first', 'sel.last')
+        else:
+            self.textEntry.tag_add('italic', 'sel.first', 'sel.last')
 
-        elif option == 'italic':
-            if self.italicFont == 'italic':
-                self.italicFont = 'roman'
-                self.textEntry.tag_remove(f'italic', 'sel.first', 'sel.last')
-            else:
-                self.italicFont = 'italic'
-                fontToEdit = font.Font(self.textEntry, self.textEntry.cget('font'))
-                fontToEdit.configure(underline=self.underlineFont, weight=self.boldFont, slant=self.italicFont)
-                self.textEntry.tag_configure(f'italic', font=fontToEdit)
-                self.textEntry.tag_add(f'italic', 'sel.first', 'sel.last')
-                self.textEntry.selection_clear()
+    def boldText(self): # Makes text Bold
+        boldFont = font.Font(self.textEntry, self.textEntry.cget('font'))
+        boldFont.configure(weight='bold')
 
-        elif option == 'underline':
-            if self.underlineFont == 'underline':
-                self.underlineFont = False
-                self.textEntry.tag_remove(f'underline', 'sel.first', 'sel.last')
-            else:
-                self.underlineFont = True
-                fontToEdit = font.Font(self.textEntry, self.textEntry.cget('font'))
-                fontToEdit.configure(underline=self.underlineFont, weight=self.boldFont, slant=self.italicFont)
-                self.textEntry.tag_configure(f'underline', font=fontToEdit)
-                self.textEntry.tag_add(f'underline', 'sel.first', 'sel.last')
-                self.textEntry.selection_clear()
-        
+        self.textEntry.tag_configure('bold', font=boldFont)
+        currentTags = self.textEntry.tag_names('sel.first')
 
-        
-      
+        if 'bold' in currentTags:
+            self.textEntry.tag_remove('bold', 'sel.first', 'sel.last')
+        else:
+            self.textEntry.tag_add('bold', 'sel.first', 'sel.last')
+
+    def underlineText(self): # Makes text Underlined
+        underlineFont = font.Font(self.textEntry, self.textEntry.cget('font'))
+        underlineFont.configure(underline=True)
+
+        self.textEntry.tag_configure('underline', font=underlineFont)
+        currentTags = self.textEntry.tag_names('sel.first')
+
+        if 'underline' in currentTags:
+            self.textEntry.tag_remove('underline', 'sel.first', 'sel.last')
+        else:
+            self.textEntry.tag_add('underline', 'sel.first', 'sel.last')
     
     def alignTextLeft(self):        # Aligns text to the left
         self.textEntry.tag_configure('left', justify='left')
@@ -321,6 +317,3 @@ class journal:
 
 if __name__ == '__main__':
     journal()
-    
-
-    
